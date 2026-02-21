@@ -1,0 +1,48 @@
+{
+  "strategy": "zero_shot",
+  "prompt_prefix": "-- 1. Create Tables\nCREATE TABLE Customer(\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    First_name TEXT NOT NULL,\n    Last_name TEXT NOT NULL,\n    Email TEXT NOT NULL,\n    Is_So_Cal_resident INTEGER NOT NULL,\n    Address_id INTEGER NOT NULL REFERENCES Address(Address_id)\n);\n\nCREATE TABLE Address(\n    Address_id INTEGER PRIMARY KEY AUTOINCREMENT,\n    Street1 TEXT NOT NULL,\n    Street2 TEXT,\n    City TEXT NOT NULL,\n    State TEXT NOT NULL,\n    Zip TEXT NOT NULL\n);\n\nCREATE TABLE Admission(\n    Admission_id INTEGER PRIMARY KEY AUTOINCREMENT,\n    Type TEXT NOT NULL,\n    Issue_date DATE NOT NULL,\n    Is_active INTEGER NOT NULL DEFAULT 1,\n    Expiration_date DATE NOT NULL\n);\n\nCREATE TABLE Ticket(\n    Admission_id INTEGER NOT NULL REFERENCES Admission(Admission_id),\n    Days_remaining INTEGER NOT NULL,\n    Purchaser_id INTEGER NOT NULL REFERENCES Customer(id),\n    Ticket_type_id INTEGER NOT NULL REFERENCES Ticket_type(Type_id),\n    PRIMARY KEY(Admission_id)\n);\n\nCREATE TABLE Season_pass(\n    Admission_id INTEGER NOT NULL REFERENCES Admission(Admission_id),\n    CustomerId INTEGER NOT NULL REFERENCES Customer(id),\n    Type_code TEXT NOT NULL REFERENCES Pass_type(Type_code),\n    PRIMARY KEY(Admission_id)\n);\n\nCREATE TABLE Pass_type(\n    Type_code TEXT NOT NULL,\n    Type_name TEXT NOT NULL,\n    PRIMARY KEY(Type_code)\n);\n\nCREATE TABLE Blackout_rules(\n    Rule_id INTEGER PRIMARY KEY AUTOINCREMENT,\n    Type_code TEXT NOT NULL REFERENCES Pass_type(Type_code),\n    Start_date DATE NOT NULL,\n    End_date DATE NOT NULL\n);\n\nCREATE TABLE Ticket_type(\n    Type_id INTEGER PRIMARY KEY AUTOINCREMENT,\n    Type_name TEXT NOT NULL,\n    Allowed_visits INTEGER NOT NULL,\n    Valid_window_size INTEGER NOT NULL\n);\n\nCREATE TABLE Park(\n    Park_id INTEGER PRIMARY KEY AUTOINCREMENT,\n    Park_name TEXT NOT NULL\n);\n\nCREATE TABLE Park_ticket(\n    Ticket_type_id INTEGER NOT NULL REFERENCES Ticket_type(Type_id),\n    Park_id INTEGER NOT NULL REFERENCES Park(Park_id),\n    PRIMARY KEY (Ticket_type_id, Park_id)\n);\n\nCREATE TABLE Reservation(\n    Reservation_id INTEGER PRIMARY KEY AUTOINCREMENT,\n    Park_id INTEGER NOT NULL REFERENCES Park(Park_id),\n    Admission_id INTEGER NOT NULL REFERENCES Admission(Admission_id),\n    Reservation_date DATE NOT NULL\n);\n\n Give me a SQLite SELECT statement that answers the question. Respond only with the SQL query, no explanations, no code blocks, no markdown.\n ",
+  "questionResults": [
+    {
+      "question": "Who has a reservation in October of 2023?",
+      "sql": "SELECT T1.First_name, T1.Last_name FROM Customer AS T1 JOIN Ticket AS T2 ON T1.id = T2.Purchaser_id JOIN Reservation AS T3 ON T2.Admission_id = T3.Admission_id WHERE T3.Reservation_date LIKE '2023-10-%' UNION SELECT T1.First_name, T1.Last_name FROM Customer AS T1 JOIN Season_pass AS T2 ON T1.id = T2.CustomerId JOIN Reservation AS T3 ON T2.Admission_id = T3.Admission_id WHERE T3.Reservation_date LIKE '2023-10-%'",
+      "queryRawResponse": "[('Daisy', 'Duck'), ('Mickey', 'Mouse')]",
+      "friendlyResponse": "Daisy Duck and Mickey Mouse have reservations in October 2023.",
+      "error": "None"
+    },
+    {
+      "question": "Can Donald go to disneyland on Christmas?",
+      "sql": "SELECT CASE WHEN COUNT(*) > 0 THEN 'Yes' ELSE 'No' END FROM Customer AS T1 JOIN Season_pass AS T2 ON T1.id = T2.CustomerId WHERE T1.First_name = 'Donald' AND T2.Type_code NOT IN (SELECT Type_code FROM Blackout_rules WHERE '2023-12-25' BETWEEN Start_date AND End_date);",
+      "queryRawResponse": "[('No',)]",
+      "friendlyResponse": "Unfortunately, no, Donald can't go to Disneyland on Christmas.",
+      "error": "None"
+    },
+    {
+      "question": "Does Daisy qualify for the so-cal discount?",
+      "sql": "SELECT Is_So_Cal_resident FROM Customer WHERE First_name = 'Daisy'",
+      "queryRawResponse": "[(0,)]",
+      "friendlyResponse": "No, unfortunately Daisy does not qualify for the SoCal discount.",
+      "error": "None"
+    },
+    {
+      "question": "I want to email everyone who has an inspire key for an upgrade deal. Can you give me all their emails?",
+      "sql": "SELECT T1.Email FROM Customer AS T1 JOIN Season_pass AS T2 ON T1.id = T2.CustomerId JOIN Pass_type AS T3 ON T2.Type_code = T3.Type_code WHERE T3.Type_name = 'Inspire Key'",
+      "queryRawResponse": "[('mickey@disney.com',)]",
+      "friendlyResponse": "Sure! Here is the email for the Inspire Key holder: mickey@disney.com",
+      "error": "None"
+    },
+    {
+      "question": "List the names and emails of customers who live in California.",
+      "sql": "SELECT T1.First_name, T1.Last_name, T1.Email FROM Customer AS T1 JOIN Address AS T2 ON T1.Address_id = T2.Address_id WHERE T2.State = 'CA' OR T2.State = 'California'",
+      "queryRawResponse": "[('Mickey', 'Mouse', 'mickey@disney.com'), ('Donald', 'Duck', 'donald@disney.com'), ('Goofy', 'Goof', 'goofy@disney.com')]",
+      "friendlyResponse": "Here are the customers who live in California:\n\n* Mickey Mouse (mickey@disney.com)\n* Donald Duck (donald@disney.com)\n* Goofy Goof (goofy@disney.com)",
+      "error": "None"
+    },
+    {
+      "question": "Are there any blackout dates for the 'Inspire Key' pass type?",
+      "sql": "SELECT T1.Start_date, T1.End_date FROM Blackout_rules AS T1 JOIN Pass_type AS T2 ON T1.Type_code = T2.Type_code WHERE T2.Type_name = 'Inspire Key'",
+      "queryRawResponse": "[]",
+      "friendlyResponse": "Good news! There are no blackout dates for the Inspire Key pass.",
+      "error": "None"
+    }
+  ]
+}
